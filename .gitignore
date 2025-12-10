@@ -1,0 +1,9 @@
+.env
+uploads/
+*.xls
+*.xlsx
+*.doc
+*.docx
+vendor/
+.DS_Store
+.vscode/
