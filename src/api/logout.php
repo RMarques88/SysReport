@@ -15,22 +15,23 @@ $scriptFile = $_SERVER['SCRIPT_FILENAME'];
 // Get the project root directory (from src/api/ go up twice)
 $projRoot = dirname(dirname(dirname($scriptFile)));
 
-// Normalize slashes
-$docRoot = str_replace('\\', '/', $docRoot);
-$projRoot = str_replace('\\', '/', $projRoot);
+// Normalize slashes and remove trailing slashes
+$docRoot = rtrim(str_replace('\\', '/', $docRoot), '/');
+$projRoot = rtrim(str_replace('\\', '/', $projRoot), '/');
 
-// Remove trailing slashes
-$docRoot = rtrim($docRoot, '/');
-$projRoot = rtrim($projRoot, '/');
-
-// Calculate relative path from document root
-$relativePath = str_replace($docRoot, '', $projRoot);
-
-// Ensure leading slash if not empty
-if (!empty($relativePath) && substr($relativePath, 0, 1) !== '/') {
-    $relativePath = '/' . $relativePath;
+// Case A: We are serving from public folder directly (VirtualHost)
+if (substr($docRoot, -7) === '/public') {
+    header('Location: /login.php');
+    exit;
 }
 
-header('Location: ' . $relativePath . '/public/login.php');
+// Case B: Standard Subfolder Setup
+if (strpos($projRoot, $docRoot) === 0) {
+    $relativePath = substr($projRoot, strlen($docRoot));
+    header('Location: ' . $relativePath . '/public/login.php');
+    exit;
+}
+
+header('Location: /login.php');
 exit;
 ?>

@@ -9,23 +9,30 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $password = $data['password'] ?? '';
 
     if (login($username, $password)) {
-        // Calculate the correct base path
-        $scriptPath = $_SERVER['SCRIPT_NAME'];
-        $documentRoot = $_SERVER['DOCUMENT_ROOT'];
+        // Calculate correct base path
+        $docRoot = $_SERVER['DOCUMENT_ROOT'];
         $scriptFile = $_SERVER['SCRIPT_FILENAME'];
+
+        // Get the project root directory (from src/api/ go up twice)
+        $projRoot = dirname(dirname(dirname($scriptFile)));
+
+        // Normalize slashes and remove trailing slashes
+        $docRoot = rtrim(str_replace('\\', '/', $docRoot), '/');
+        $projRoot = rtrim(str_replace('\\', '/', $projRoot), '/');
+
+        $redirectUrl = '/index.php'; // Default fallback
+
+        // Case A: We are serving from public folder directly (VirtualHost)
+        if (substr($docRoot, -7) === '/public') {
+            $redirectUrl = '/index.php';
+        }
+        // Case B: Standard Subfolder Setup
+        elseif (strpos($projRoot, $docRoot) === 0) {
+            $relativePath = substr($projRoot, strlen($docRoot));
+            $redirectUrl = $relativePath . '/public/index.php';
+        }
         
-        // Get the directory containing the public folder
-        $publicDir = dirname(dirname($scriptFile)); // Go up from api/ to src/, then from src/ to root
-        $publicDir = dirname($publicDir); // Now we're at the project root
-        
-        // Calculate relative path from document root to project
-        $relativePath = str_replace($documentRoot, '', $publicDir);
-        $relativePath = str_replace('\\', '/', $relativePath);
-        
-        // Build the redirect URL
-        $redirect = $relativePath . '/public/index.php';
-        
-        echo json_encode(['success' => true, 'redirect' => $redirect]);
+        echo json_encode(['success' => true, 'redirect' => $redirectUrl]);
     } else {
         http_response_code(401);
         echo json_encode(['success' => false, 'message' => 'Invalid credentials']);

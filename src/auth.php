@@ -23,26 +23,49 @@ function requireLogin() {
         }
 
         // 2. Robust Relative Path Calculation
-        $docRoot = $_SERVER['DOCUMENT_ROOT'];
-        $projRoot = dirname(__DIR__); // /var/www/html/sysreport
+        $docRoot = $_SERVER['DOCUMENT_ROOT']; // e.g. /var/www/html
+        $projRoot = dirname(__DIR__);         // e.g. /var/www/html/sysreport
 
         // Normalize slashes
         $docRoot = str_replace('\\', '/', $docRoot);
         $projRoot = str_replace('\\', '/', $projRoot);
         
-        // Remove trailing slashes for consistency
+        // Remove trailing slashes
         $docRoot = rtrim($docRoot, '/');
         $projRoot = rtrim($projRoot, '/');
 
-        // Calculate relative path
-        $relativePath = str_replace($docRoot, '', $projRoot);
-        
-        // Ensure leading slash if not empty
-        if (!empty($relativePath) && substr($relativePath, 0, 1) !== '/') {
-            $relativePath = '/' . $relativePath;
+        // Case A: We are serving from public folder directly (VirtualHost)
+        // If the document root ENDS with /public, we assume we are in the new structure
+        if (substr($docRoot, -7) === '/public') {
+             header('Location: /login.php');
+             exit;
         }
 
-        header('Location: ' . $relativePath . '/public/login.php');
+        // Case B: Standard Subfolder Setup
+        // If project root starts with document root, we can subtract it
+        if (strpos($projRoot, $docRoot) === 0) {
+            $relativePath = substr($projRoot, strlen($docRoot));
+            header('Location: ' . $relativePath . '/public/login.php');
+            exit;
+        }
+        
+        // Case C: Fallback - if all else fails, try to guess based on script name
+        // This is often safer than path subtraction if paths are weird (symlinks/aliases)
+        $scriptName = $_SERVER['SCRIPT_NAME']; // e.g. /sysreport/public/index.php
+        $dirName = dirname($scriptName);       // e.g. /sysreport/public
+        
+        // If we are already in public, go to login.php in same dir
+        if (basename($dirName) === 'public') {
+             header('Location: ' . $dirName . '/login.php');
+             exit;
+        }
+        
+        // If we are in src/api, we need to go up to public
+        // But this function is usually called from index.php or similar entry points
+        
+        // Ultimate Fallback: Hardcoded relative path if we know the folder name
+        // But let's try to just use the current location context
+        header('Location: ./login.php'); 
         exit;
     }
 }
